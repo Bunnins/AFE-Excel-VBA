@@ -1,228 +1,192 @@
 Attribute VB_Name = "Components"
 
 Sub ExtractMatchingItems()
-    ' Declare workbook and worksheet variables
     Dim sourceWorkbook As Workbook
     Dim sourceWorksheet As Worksheet
-    Dim destinationWorkbook As Workbook
-    Dim destinationWorksheet As Worksheet
-    Dim resultWorksheet As Worksheet ' For storing the results of the Group and Group Counter search
-    Dim lastRowSource As Long, resultRow As Long
-    Dim i As Long, j As Long
-    Dim searchValue As String
-    Dim searchValueFound As Boolean
-    Dim RestartRow As Long
-    Dim lastRowTaskList As Long, resultRow2 As Long
     Dim taskListRepSheet As Worksheet
-    Dim groupCounter As String, columnI As String, columnJ As String, columnP As String
-    Dim dict As Object ' Dictionary to track unique values
-application.ScreenUpdating = False
+    Dim wsData As Worksheet
+    Dim lastRowSource As Long
+    Dim lastRowTaskList As Long
+    Dim i As Long, r As Long
+    Dim resultRow As Long, resultRow2 As Long
+    Dim searchValue As String
+    Dim roundedProgress As Double
+    Dim dictIDs As Object
+    Dim dictRangeStart As Object
+    Dim dictRangeEnd As Object
+    Dim dictUniquePairs As Object
+    Dim idArr As Variant
+    Dim taskArr As Variant
+    Dim outputArr() As Variant
+    Dim outputCount As Long
+    Dim rangeStart As Long, rangeEnd As Long
+    Dim currentKey As String
+    Dim startRow As Long
 
-   With ufProgress
+    SetScreenUpdatingSafely False
+
+    With ufProgress
         .LabelCaption.Caption = "Retrieving Tasklist Data - 0" & "% Complete"
         .LabelProgress.Width = 0 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
+        .Repaint
     End With
     DoEvents
 
+    On Error GoTo ErrorHandler
 
-
-    On Error GoTo ErrorHandler ' Global error handling
-
-    ' Set references to the workbooks and worksheets
     Set sourceWorkbook = Workbooks("AFE.xlsx")
     Set sourceWorksheet = sourceWorkbook.Sheets("Components Due")
-
-    ' Set the task list sheet for reference
     Set taskListRepSheet = Workbooks("AFE Builder from SAP HANA").Sheets("TASK_LIST_REP")
+    Set wsData = Worksheets("Data")
 
-
-    ' Define the sorting range
-    With taskListRepSheet.Sort
-        .SortFields.Clear
-        .SortFields.Add Key:=taskListRepSheet.Range("H:H"), _
-                        SortOn:=xlSortOnValues, order:=xlAscending, DataOption:=xlSortNormal
-        ' Apply the sort to the entire used range
-        .SetRange taskListRepSheet.UsedRange
-        .Header = xlYes ' Indicates the data range has headers
-        .MatchCase = False
-        .Orientation = xlTopToBottom
-        .Apply
-    End With
-
-    ' Create a new dictionary to track unique values
-    Set dict = CreateObject("Scripting.Dictionary")
-
-    ' Step 3: Determine the last row in the source sheet
     lastRowSource = sourceWorksheet.Cells(sourceWorksheet.Rows.Count, "H").End(xlUp).Row
-    resultRow = 1 ' Start writing results in the first row of the destination sheet
+    If lastRowSource < 3 Then Exit Sub
 
-    ' Step 4: Loop through rows in the source sheet starting from row 3
+    idArr = sourceWorksheet.Range("A3:A" & lastRowSource).Value2
 
-    
-    
-    For i = 3 To lastRowSource
-        ' Check if the value in column H is 1
-        'If sourceWorksheet.Cells(i, "H").Value = 1 Then
-            ' Step 7: Get the value from column A to use as searchValue
-            searchValue = sourceWorksheet.Cells(i, "A").Value
-
-            ' Ensure searchValue is a string (to avoid issues with numeric values)
-            searchValue = CStr(searchValue)
-
-            ' Check if the search value is already in the dictionary (i.e., has been added before)
-            If Not dict.Exists(searchValue) Then
-                ' Add the value to the Data sheet (Column A)
-                Worksheets("Data").Cells(resultRow, 1).Value = searchValue
-                dict.Add searchValue, 1 ' Mark the value as added (you could store any value, here I use 1)
-
-                resultRow = resultRow + 1
-            End If
-       'End If
+    Set dictIDs = CreateObject("Scripting.Dictionary")
+    For i = 1 To UBound(idArr, 1)
+        searchValue = CStr(idArr(i, 1))
+        If Len(searchValue) > 0 Then
+            If Not dictIDs.Exists(searchValue) Then dictIDs.Add searchValue, 1
+        End If
     Next i
 
-    ' Sort the group and group counters
-    Worksheets("Data").Columns("A:A").AutoFit
-    ' Sort Column A in the worksheet named "Data"
-    Worksheets("Data").Sort.SortFields.Clear
-    Worksheets("Data").Sort.SortFields.Add Key:=Worksheets("Data").Range("A:A"), _
-        SortOn:=xlSortOnValues, order:=xlAscending, DataOption:=xlSortNormal
+    wsData.Columns("A:A").ClearContents
+    resultRow = 1
+    If dictIDs.Count > 0 Then
+        Dim keys As Variant
+        keys = dictIDs.Keys
+        For i = LBound(keys) To UBound(keys)
+            wsData.Cells(resultRow, 1).Value = keys(i)
+            resultRow = resultRow + 1
+        Next i
+    End If
 
-    ' Apply the sort
-    With Worksheets("Data").Sort
-        .SetRange Worksheets("Data").UsedRange
-        .Header = xlNo ' Change to xlYes if the column has a header
+    wsData.Sort.SortFields.Clear
+    wsData.Sort.SortFields.Add Key:=wsData.Range("A:A"), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+    With wsData.Sort
+        .SetRange wsData.UsedRange
+        .Header = xlNo
         .MatchCase = False
         .Orientation = xlTopToBottom
         .Apply
     End With
 
-
-On Error Resume Next
-    ' Step 7: Now, for each value in column A of the destination sheet, search in TASK_LIST_REP tab
-    RestartRow = 1
-    resultRow2 = 1 ' Start writing Group and Group Counter results in the new sheet
     lastRowTaskList = taskListRepSheet.Cells(taskListRepSheet.Rows.Count, "H").End(xlUp).Row
+    If lastRowTaskList < 3 Or resultRow = 1 Then GoTo Finalize
 
-    ' Loop through each row in column A of the destination sheet
-    For i = 1 To resultRow - 1
-        searchValue = Worksheets("Data").Cells(i, 1).Value
-        
-        ' Ensure searchValue is a string (to avoid issues with numeric values)
-        searchValue = CStr(searchValue)
-searchValueFound = False
-        ' Search for this value in column H of the TASK_LIST_REP sheet
- For j = 3 To lastRowTaskList ' Starting from row 3 in TASK_LIST_REP
-    If taskListRepSheet.Cells(j, "H").Value = searchValue Then
-    searchValueFound = True
-        ' Concatenate the current Group and Group Counter (H & P columns)
-        Dim duplicate2 As String
-        duplicate2 = taskListRepSheet.Cells(j, "H").Value & taskListRepSheet.Cells(j, "P").Value
+    taskArr = taskListRepSheet.Range("H3:P" & lastRowTaskList).Value2
+    Set dictRangeStart = CreateObject("Scripting.Dictionary")
+    Set dictRangeEnd = CreateObject("Scripting.Dictionary")
 
-        ' Only add if the combination is unique
-        If Not dict.Exists(duplicate2) Then
-            ' Initialize start and end rows for the dynamic range
-            Dim startRow As Long, endRow As Long
-            startRow = j
-            endRow = j
-
-            ' Extend the range while the value in Column H matches the next row
-            Do While taskListRepSheet.Cells(endRow + 1, "H").Value = taskListRepSheet.Cells(endRow, "H").Value _
-                And Not IsEmpty(taskListRepSheet.Cells(endRow + 1, "H").Value)
-                endRow = endRow + 1
-            Loop
-            
-            ' Copy the dynamic range from Columns H to P
-            taskListRepSheet.Range(taskListRepSheet.Cells(startRow, "H"), taskListRepSheet.Cells(endRow, "P")).Copy
-
-            ' Paste into the "Data" worksheet starting at the appropriate row and column
-            Worksheets("Data").Cells(resultRow2, 5).PasteSpecial Paste:=xlPasteValues
-
-            ' Update the dictionary to track this combination
-            dict.Add duplicate2, 1
-
-            ' Update resultRow2 to account for the pasted rows
-            resultRow2 = resultRow2 + (endRow - startRow + 1)
-
-            ' Skip the rows that were already processed
-            j = endRow
-            RestartRow = endRow
+    currentKey = ""
+    For r = 1 To UBound(taskArr, 1)
+        searchValue = CStr(taskArr(r, 1))
+        If Len(searchValue) > 0 Then
+            If searchValue <> currentKey Then
+                If Len(currentKey) > 0 Then dictRangeEnd(currentKey) = r - 1
+                currentKey = searchValue
+                dictRangeStart(searchValue) = r
+                dictRangeEnd(searchValue) = r
+            End If
         End If
-ElseIf j = lastRowTaskList Then
-    If searchValueFound = False Then
-        'MsgBox "The search value '" & searchValue & "' was not found in Column H.", vbExclamation, "Search Value Not Found"
-        j = RestartRow
-        GoTo Newstart
-    End If
-End If
-Next j
-Newstart:
+    Next r
+    If Len(currentKey) > 0 Then dictRangeEnd(currentKey) = UBound(taskArr, 1)
 
-       With ufProgress
-        .LabelCaption.Caption = "Retrieving Tasklist Data - " & Format((i / resultRow) * 100, "0") & "% Complete"
-        Dim roundedProgress As Double
-        roundedProgress = Round((i / resultRow), 2) ' Limit to 2 decimal places
-        .LabelProgress.Width = roundedProgress * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
-    End With
-    DoEvents
+    Set dictUniquePairs = CreateObject("Scripting.Dictionary")
+    ReDim outputArr(1 To 9, 1 To 1)
+    outputCount = 0
+
+    resultRow2 = 1
+    For i = 1 To resultRow - 1
+        searchValue = CStr(wsData.Cells(i, 1).Value2)
+        If dictRangeStart.Exists(searchValue) Then
+            rangeStart = CLng(dictRangeStart(searchValue))
+            rangeEnd = CLng(dictRangeEnd(searchValue))
+            For r = rangeStart To rangeEnd
+                Dim pairKey As String
+                pairKey = CStr(taskArr(r, 1)) & CStr(taskArr(r, 9))
+                If Not dictUniquePairs.Exists(pairKey) Then
+                    dictUniquePairs.Add pairKey, 1
+                    outputCount = outputCount + 1
+                    If outputCount > UBound(outputArr, 2) Then ReDim Preserve outputArr(1 To 9, 1 To outputCount)
+                    Dim c As Long
+                    For c = 1 To 9
+                        outputArr(c, outputCount) = taskArr(r, c)
+                    Next c
+                End If
+            Next r
+        End If
+
+        With ufProgress
+            .LabelCaption.Caption = "Retrieving Tasklist Data - " & Format((i / resultRow) * 100, "0") & "% Complete"
+            roundedProgress = Round((i / resultRow), 2)
+            .LabelProgress.Width = roundedProgress * (.FrameProgress.Width)
+            .Repaint
+        End With
+        DoEvents
     Next i
 
+    wsData.Range("E:M").ClearContents
+    If outputCount > 0 Then
+        Dim writeArr() As Variant
+        ReDim writeArr(1 To outputCount, 1 To 9)
+        Dim rr As Long, cc As Long
+        For rr = 1 To outputCount
+            For cc = 1 To 9
+                writeArr(rr, cc) = outputArr(cc, rr)
+            Next cc
+        Next rr
+        wsData.Range("E1").Resize(outputCount, 9).Value2 = writeArr
+    End If
 
-    ' Cut Column M
-    Worksheets("Data").Columns("M").Cut
-    
-    ' Insert the cut column into Column F
-    Worksheets("Data").Columns("F").Insert Shift:=xlToRight
+Finalize:
+    startRow = wsData.Cells(wsData.Rows.Count, "A").End(xlUp).Row
+    If wsData.Cells(wsData.Rows.Count, "M").End(xlUp).Row > startRow Then
+        startRow = wsData.Cells(wsData.Rows.Count, "M").End(xlUp).Row
+    End If
+    If startRow < 1 Then startRow = 1
 
-    ' Delete the now-empty Column M
-    Worksheets("Data").Columns("I:N").Delete
+    wsData.Columns("F").Insert Shift:=xlToRight
+    wsData.Range("F1:F" & startRow).Value2 = wsData.Range("N1:N" & startRow).Value2
+    wsData.Columns("I:N").Delete
 
-
-    ' Step 8: Auto fit columns in the result sheet
-   'Worksheets("Data").Columns("A:H").AutoFit
-
-       With ufProgress
+    With ufProgress
         .LabelCaption.Caption = "Retrieving Tasklist Data - 100" & "% Complete"
         .LabelProgress.Width = 1 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
+        .Repaint
     End With
     DoEvents
-
     Exit Sub
 
 ErrorHandler:
-    ' Error handling message
     MsgBox "An error occurred: " & Err.Description & vbCrLf & "Error Number: " & Err.Number, vbCritical
 End Sub
 
 Sub ListOccurrencesInLabourCosting()
-    ' Declare variables
-    Dim wsData As Worksheet
     Dim wsLabourCosting As Worksheet
     Dim wsLCData As Worksheet
     Dim tbl As ListObject
     Dim lastRowData As Long
-    Dim lastRowLCData As Long
-    Dim searchValue As Variant
-    Dim fullSearchValue As String ' To hold concatenated value of ID and Main Item Desc
-    Dim i As Long, j As Long
-    Dim groupCounter As Variant
-    Dim workCenter As Variant
-    Dim work As Variant
-    Dim activityType As Variant
-    Dim netPrice As Variant
-    Dim CRHDWorkCenterResourceDesc As Variant
     Dim wbAFEBuilder As Workbook
     Dim wbAFE As Workbook
-    Dim colIndex As Integer
     Dim wsAFE As Worksheet
-    Dim wsComponentsDue As Worksheet ' Added variable for Components Due sheet
+    Dim wsComponentsDue As Worksheet
+    Dim tblData As Variant
+    Dim compData As Variant
+    Dim outputArr() As Variant
+    Dim outputCount As Long
+    Dim i As Long, r As Long
+    Dim searchValue As String
+    Dim fullSearchValue As String
+    Dim dictIndex As Object
+    Dim idx As Collection
+    Dim idxGroup As Long, idxVendor As Long, idxWork As Long
+    Dim idxActivity As Long, idxCost As Long, idxResource As Long
 
-    ' Disable screen updating to improve performance
-    application.ScreenUpdating = False
-    
-    ' Ensure the AFE builder workbook is open
+    SetScreenUpdatingSafely False
+
     On Error Resume Next
     Set wbAFEBuilder = Workbooks("AFE builder from SAP HANA")
     On Error GoTo 0
@@ -230,23 +194,19 @@ Sub ListOccurrencesInLabourCosting()
         MsgBox "The 'AFE builder' workbook is not open."
         Exit Sub
     End If
-    
-    ' Ensure the AFE workbook is open
+
     On Error Resume Next
-    Set wbAFE = Workbooks("AFE") ' Make sure the AFE workbook is open
+    Set wbAFE = Workbooks("AFE")
     On Error GoTo 0
     If wbAFE Is Nothing Then
         MsgBox "The 'AFE' workbook is not open."
         Exit Sub
     End If
-    
-    ' Set references to the worksheets
-    Set wsData = ThisWorkbook.Sheets("Data")
+
     Set wsLabourCosting = wbAFEBuilder.Sheets("Labour Costing")
     Set wsLCData = ThisWorkbook.Sheets("LC Data")
-    Set wsComponentsDue = wbAFE.Sheets("Components Due") ' Reference to Components Due sheet
-    
-    ' Set reference to the table in Labour Costing sheet
+    Set wsComponentsDue = wbAFE.Sheets("Components Due")
+
     On Error Resume Next
     Set tbl = wsLabourCosting.ListObjects("TASK_LIST_REP__2")
     On Error GoTo 0
@@ -254,93 +214,83 @@ Sub ListOccurrencesInLabourCosting()
         MsgBox "Table 'TASK_LIST_REP__2' not found in the 'Labour Costing' worksheet."
         Exit Sub
     End If
+    If tbl.DataBodyRange Is Nothing Then Exit Sub
 
-    ' Find the last row in column A of Components Due sheet (starting from row 3)
-    lastRowData = wsComponentsDue.Cells(wsComponentsDue.Rows.Count, "A").End(xlUp).Row
+    idxGroup = tbl.ListColumns("Group and Group Counter").Index
+    idxVendor = tbl.ListColumns("PLPO-LIFNR Vendor Desc").Index
+    idxWork = tbl.ListColumns("PLPO-ARBEI Work (Attr)").Index
+    idxActivity = tbl.ListColumns("PLPO-LARNT Activity Type").Index
+    idxCost = tbl.ListColumns("PLPO-PEINH Net Price (Attr)").Index
+    On Error Resume Next
+    idxResource = tbl.ListColumns("CRHD-ARBPL Work Center/Resource Desc").Index
+    On Error GoTo 0
+    If idxResource = 0 Then
+        MsgBox "'CRHD-ARBPL Work Center/Resource Desc' column not found."
+        idxResource = idxVendor
+    End If
 
-    ' Initialize the first row for LC Data sheet
-    lastRowLCData = 2 ' Start from row 2 (row 1 will have the headers)
+    tblData = tbl.DataBodyRange.Value2
 
-    ' Add headers to LC Data sheet
-    wsLCData.Cells(1, 1).Value = "Group and Group Counter" ' Column A
-    wsLCData.Cells(1, 2).Value = "Vendor Description" ' Column B
-    wsLCData.Cells(1, 3).Value = "Work Hours" ' Column C
-    wsLCData.Cells(1, 4).Value = "Activity Type" ' Column D
-    wsLCData.Cells(1, 5).Value = "PMEX Cost" ' Column E
-    wsLCData.Cells(1, 6).Value = "Vendor Name" ' Column F
-
-    ' Loop through each value in column A of Components Due sheet starting from A3
-    For i = 3 To lastRowData
-        ' Concatenate the values from Col A ("ID") and Col B ("Main Item Desc") with a space in between
-        fullSearchValue = wsComponentsDue.Cells(i, 1).Value & " " & wsComponentsDue.Cells(i, 2).Value
-        searchValue = Left(wsComponentsDue.Cells(i, 1).Value, 10) ' Use the first 10 characters for the lookup
-        
-        ' Check if the ID in Components Due sheet (Col A) is not empty
-        If Not IsEmpty(searchValue) Then
-            ' Loop through all rows in the table to find all occurrences of searchValue in "Group and Group Counter" column (D)
-            For j = 1 To tbl.DataBodyRange.Rows.Count
-                ' If we find a match in column D (Group and Group Counter)
-                If tbl.DataBodyRange.Cells(j, tbl.ListColumns("Group and Group Counter").Index).Value = searchValue Then
-                    ' Get the corresponding values from other columns in the table
-                    groupCounter = tbl.DataBodyRange.Cells(j, tbl.ListColumns("Group and Group Counter").Index).Value
-                    workCenter = tbl.DataBodyRange.Cells(j, tbl.ListColumns("PLPO-LIFNR Vendor Desc").Index).Value ' Updated line
-                    work = tbl.DataBodyRange.Cells(j, tbl.ListColumns("PLPO-ARBEI Work (Attr)").Index).Value
-                    activityType = tbl.DataBodyRange.Cells(j, tbl.ListColumns("PLPO-LARNT Activity Type").Index).Value
-                    netPrice = tbl.DataBodyRange.Cells(j, tbl.ListColumns("PLPO-PEINH Net Price (Attr)").Index).Value
-                    
-                    ' Find the index of the 'CRHD-ARBPL Work Center/Resource Desc' column
-                    On Error Resume Next
-                    colIndex = tbl.ListColumns("CRHD-ARBPL Work Center/Resource Desc").Index
-                    On Error GoTo 0
-
-                    If colIndex > 0 Then
-                        ' Access the value
-                        CRHDWorkCenterResourceDesc = tbl.DataBodyRange.Cells(j, colIndex).Value
-                    Else
-                        MsgBox "'CRHD-ARBPL Work Center/Resource Desc' column not found."
-                        CRHDWorkCenterResourceDesc = "Not Found"
-                    End If
-
-                    ' Write the concatenated data into LC Data sheet (only in Column A)
-                    wsLCData.Cells(lastRowLCData, 1).Value = fullSearchValue ' Concatenated ID and Main Item Desc (from Col A and Col B)
-                    wsLCData.Cells(lastRowLCData, 2).Value = workCenter ' PLPO-LIFNR Vendor Desc (Vendor Name)
-                    wsLCData.Cells(lastRowLCData, 3).Value = work ' PLPO-ARBEI Work (Attr)
-                    wsLCData.Cells(lastRowLCData, 4).Value = activityType ' PLPO-LARNT Activity Type
-                    wsLCData.Cells(lastRowLCData, 5).Value = netPrice ' PLPO-PEINH Net Price (Attr)
-                    wsLCData.Cells(lastRowLCData, 6).Value = CRHDWorkCenterResourceDesc ' Vendor Name (CRHD-ARBPL Work Center/Resource Desc)
-
-                    ' Increment the row in LC Data sheet for the next entry
-                    lastRowLCData = lastRowLCData + 1
-                End If
-            Next j
+    Set dictIndex = CreateObject("Scripting.Dictionary")
+    For r = 1 To UBound(tblData, 1)
+        searchValue = CStr(tblData(r, idxGroup))
+        If Len(searchValue) > 0 Then
+            If Not dictIndex.Exists(searchValue) Then Set dictIndex(searchValue) = New Collection
+            dictIndex(searchValue).Add r
         End If
-    Next i
+    Next r
 
-    ' Finalize the progress form to 100% when done
-    With ufProgress
-        .LabelCaption.Caption = "Retrieving Labour Data - 100% Complete"
-        .LabelProgress.Width = 1 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
-    End With
-    DoEvents
+    lastRowData = wsComponentsDue.Cells(wsComponentsDue.Rows.Count, "A").End(xlUp).Row
+    wsLCData.Cells.Clear
+    wsLCData.Cells(1, 1).Value = "Group and Group Counter"
+    wsLCData.Cells(1, 2).Value = "Vendor Description"
+    wsLCData.Cells(1, 3).Value = "Work Hours"
+    wsLCData.Cells(1, 4).Value = "Activity Type"
+    wsLCData.Cells(1, 5).Value = "PMEX Cost"
+    wsLCData.Cells(1, 6).Value = "Vendor Name"
 
-    ' Now copy the entire LC Data sheet content and paste it into AFE workbook Sheet1 as values
-    Set wsAFE = wbAFE.Sheets("Sheet1") ' Ensure that Sheet1 exists in AFE workbook
-    
-    ' Rename the Sheet1 to "Labour Data"
+    If lastRowData >= 3 Then
+        compData = wsComponentsDue.Range("A3:B" & lastRowData).Value2
+        ReDim outputArr(1 To 6, 1 To 1)
+        outputCount = 0
+
+        For i = 1 To UBound(compData, 1)
+            fullSearchValue = CStr(compData(i, 1)) & " " & CStr(compData(i, 2))
+            searchValue = Left(CStr(compData(i, 1)), 10)
+            If dictIndex.Exists(searchValue) Then
+                Set idx = dictIndex(searchValue)
+                Dim n As Long
+                For n = 1 To idx.Count
+                    r = idx(n)
+                    outputCount = outputCount + 1
+                    If outputCount > UBound(outputArr, 2) Then ReDim Preserve outputArr(1 To 6, 1 To outputCount)
+                    outputArr(1, outputCount) = fullSearchValue
+                    outputArr(2, outputCount) = tblData(r, idxVendor)
+                    outputArr(3, outputCount) = tblData(r, idxWork)
+                    outputArr(4, outputCount) = tblData(r, idxActivity)
+                    outputArr(5, outputCount) = tblData(r, idxCost)
+                    outputArr(6, outputCount) = tblData(r, idxResource)
+                Next n
+            End If
+        Next i
+
+        If outputCount > 0 Then
+            Dim outWrite() As Variant
+            ReDim outWrite(1 To outputCount, 1 To 6)
+            Dim wr As Long, wc As Long
+            For wr = 1 To outputCount
+                For wc = 1 To 6
+                    outWrite(wr, wc) = outputArr(wc, wr)
+                Next wc
+            Next wr
+            wsLCData.Range("A2").Resize(outputCount, 6).Value2 = outWrite
+        End If
+    End If
+
+    Set wsAFE = wbAFE.Sheets("Sheet1")
     wsAFE.Name = "Labour Data"
-    
-    ' Copy the contents of the LC Data sheet
-    wsLCData.UsedRange.Copy
-
-    ' Paste as values into the AFE workbook's "Labour Data" sheet
-    wsAFE.Cells(1, 1).PasteSpecial Paste:=xlPasteValues
-
-    ' Clear the clipboard
-    application.CutCopyMode = False
-
-    ' Re-enable screen updating
-    application.ScreenUpdating = True
+    wsAFE.Cells.Clear
+    wsAFE.Range("A1").Resize(wsLCData.UsedRange.Rows.Count, wsLCData.UsedRange.Columns.Count).Value2 = wsLCData.UsedRange.Value2
 End Sub
 
 
@@ -666,79 +616,96 @@ End Sub
 Sub test()
     Dim ws As Worksheet
     Dim lastRow As Long
-    Dim currentRow As Long
-    Dim WorkHourstotal As Double
-    Dim workOrder As String
-    Dim nextWorkOrder As String
-    Dim startRow As Long
-    Dim order As Integer
-    Dim workhours As Integer
-    Dim OrderDescription As Integer
-    Dim activity As Integer
-    Dim Floc As Integer
-    Dim unit As Integer
     Dim lastCol As Long
-    Dim x As Long
-    Dim startdate As Integer
-    Dim columncheck As Boolean
-application.ScreenUpdating = False
-Set ws = ThisWorkbook.Sheets("Data")
+    Dim srcArr As Variant
+    Dim outArr() As Variant
+    Dim markRows() As Long
+    Dim outRow As Long
+    Dim i As Long, c As Long
+    Dim currentOrder As String
+    Dim workHoursTotal As Double
+    Dim roundedProgress As Double
 
-   With ufProgress
+    SetScreenUpdatingSafely False
+    Set ws = ThisWorkbook.Sheets("Data")
+
+    With ufProgress
         .LabelCaption.Caption = "Retrieving Material Pricing - 0" & "% Complete"
         .LabelProgress.Width = 0 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
+        .Repaint
     End With
     DoEvents
 
-    WorkHourstotal = 0
-    startRow = 1
-    currentRow = 1
     lastRow = ws.Cells(ws.Rows.Count, "I").End(xlUp).Row
-    ' Loop through each row in column J (Work Order Number)
-    Do While currentRow <= lastRow
-        workOrder = ws.Cells(currentRow, "E").Value
-        nextWorkOrder = ws.Cells((currentRow + 1), "E").Value
+    If lastRow < 1 Then Exit Sub
 
-        ' Check if the work order changes
-        
-        If nextWorkOrder <> workOrder Then
-        WorkHourstotal = WorkHourstotal + ws.Cells(currentRow, "I").Value
-            ' Add total for totalwork on each Work Order Operation and insert a row
-            ws.Rows(startRow).Insert Shift:=xlDown
-            ws.Cells(startRow, "I").Value = WorkHourstotal
-            ws.Cells(startRow, "H").Value = ws.Cells((startRow + 1), "E")
-            ws.Rows(startRow).Interior.Color = RGB(255, 255, 153)
-            ' Reset variables for the next work order
-            WorkHourstotal = 0
-            startRow = currentRow + 2
-            currentRow = currentRow + 1
-             
-        Else
-            ' Keep adding Work Order Operation hours
-            WorkHourstotal = WorkHourstotal + ws.Cells(currentRow, "I").Value
+    lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+    If lastCol < 9 Then lastCol = 9
+
+    srcArr = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol)).Value2
+    ReDim outArr(1 To (lastRow * 2), 1 To lastCol)
+    ReDim markRows(1 To (lastRow * 2))
+
+    outRow = 0
+    currentOrder = ""
+    workHoursTotal = 0
+
+    For i = 1 To lastRow
+        If CStr(srcArr(i, 5)) <> currentOrder Then
+            If Len(currentOrder) > 0 Then
+                outRow = outRow + 1
+                outArr(outRow, 8) = currentOrder
+                outArr(outRow, 9) = workHoursTotal
+                markRows(outRow) = 1
+            End If
+            currentOrder = CStr(srcArr(i, 5))
+            workHoursTotal = 0
         End If
-        currentRow = currentRow + 1
-        lastRow = ws.Cells(ws.Rows.Count, "E").End(xlUp).Row
-        
+
+        workHoursTotal = workHoursTotal + Val(srcArr(i, 9))
+
+        outRow = outRow + 1
+        For c = 1 To lastCol
+            outArr(outRow, c) = srcArr(i, c)
+        Next c
+
         With ufProgress
-        .LabelCaption.Caption = "Retrieving Material Pricing  - " & Format((currentRow / lastRow) * 100, "0") & "% Complete"
-        Dim roundedProgress As Double
-        roundedProgress = Round((currentRow / lastRow), 2) ' Limit to 2 decimal places
-        .LabelProgress.Width = roundedProgress * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
-    End With
-    DoEvents
-        
-    Loop
-    
-       With ufProgress
+            .LabelCaption.Caption = "Retrieving Material Pricing  - " & Format((i / lastRow) * 100, "0") & "% Complete"
+            roundedProgress = Round((i / lastRow), 2)
+            .LabelProgress.Width = roundedProgress * (.FrameProgress.Width)
+            .Repaint
+        End With
+        DoEvents
+    Next i
+
+    If Len(currentOrder) > 0 Then
+        outRow = outRow + 1
+        outArr(outRow, 8) = currentOrder
+        outArr(outRow, 9) = workHoursTotal
+        markRows(outRow) = 1
+    End If
+
+    ws.Cells.Clear
+    Dim finalArr() As Variant
+    ReDim finalArr(1 To outRow, 1 To lastCol)
+    Dim fr As Long, fc As Long
+    For fr = 1 To outRow
+        For fc = 1 To lastCol
+            finalArr(fr, fc) = outArr(fr, fc)
+        Next fc
+    Next fr
+    ws.Range(ws.Cells(1, 1), ws.Cells(outRow, lastCol)).Value2 = finalArr
+
+    For i = 1 To outRow
+        If markRows(i) = 1 Then ws.Rows(i).Interior.Color = RGB(255, 255, 153)
+    Next i
+
+    With ufProgress
         .LabelCaption.Caption = "Retrieving Material Pricing - 100" & "% Complete"
         .LabelProgress.Width = 1 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
+        .Repaint
     End With
     DoEvents
-    
 End Sub
 
 Sub ApplyXLOOKUPDownSheet_AFE()
