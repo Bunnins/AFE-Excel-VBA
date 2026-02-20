@@ -1,10 +1,30 @@
 Attribute VB_Name = "ComponentsDue"
+Public gPerfLock As Boolean
+
+Private gPrevScreenUpdating As Boolean
+Private gPrevEnableEvents As Boolean
+Private gPrevCalculation As XlCalculation
+Private gPerfApplied As Boolean
+
 Public Sub RunAllSteps()
     On Error GoTo ErrorHandler
 
+    Const PERF_MODE As Boolean = True
+
+    Dim runStart As Double
+    Dim stepStart As Double
+    Dim stepElapsed As Double
+    runStart = Timer
+
+    gPerfLock = PERF_MODE
+    If PERF_MODE Then BeginPerfMode
+
     Dim result As String
     result = MsgBox("Please ensure Data is Fully Loaded before Proceeding - Is all Data Loaded", vbYesNo)
-    If result = vbNo Then Exit Sub
+    If result = vbNo Then
+        If PERF_MODE Then EndPerfMode
+        Exit Sub
+    End If
 
     ufProgress.LabelProgress.Width = 0
     ufProgress.Show
@@ -17,147 +37,272 @@ Public Sub RunAllSteps()
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Creating Workbook")
+    stepStart = Timer
     Call Createworkbook
+    stepElapsed = Timer - stepStart
+    Debug.Print "Createworkbook: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Clearing Data and Data2 sheets")
+    stepStart = Timer
     Call ClearDataAndUpdate
+    stepElapsed = Timer - stepStart
+    Debug.Print "ClearDataAndUpdate: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Removing duplicates from Labour Costing sheet")
+    stepStart = Timer
     Call Removeduplicates
+    stepElapsed = Timer - stepStart
+    Debug.Print "Removeduplicates: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying Text to Columns")
+    stepStart = Timer
     Call Text_to_Columns
+    stepElapsed = Timer - stepStart
+    Debug.Print "Text_to_Columns: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Executing Macro1")
+    stepStart = Timer
     Call Macro1
+    stepElapsed = Timer - stepStart
+    Debug.Print "Macro1: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Searching and returning values")
+    stepStart = Timer
     Call SearchAndReturnValues
+    stepElapsed = Timer - stepStart
+    Debug.Print "SearchAndReturnValues: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Running CounterReturn")
+    stepStart = Timer
     Call CounterReturn
+    stepElapsed = Timer - stepStart
+    Debug.Print "CounterReturn: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Running CounterReturn2")
+    stepStart = Timer
     Call CounterReturn2
+    stepElapsed = Timer - stepStart
+    Debug.Print "CounterReturn2: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Removing blank rows from Components Due sheet")
+    stepStart = Timer
     Call RemoveBlankRows(Workbooks("AFE Builder from SAP HANA").Sheets("Components Due"))
+    stepElapsed = Timer - stepStart
+    Debug.Print "RemoveBlankRows: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Sorting data in Components Due sheet")
+    stepStart = Timer
     Call Sort_Order
+    stepElapsed = Timer - stepStart
+    Debug.Print "Sort_Order: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Clearing specific columns from another sheet")
+    stepStart = Timer
     Call ClearTable1672ColI
+    stepElapsed = Timer - stepStart
+    Debug.Print "ClearTable1672ColI: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Extracting matching items")
+    stepStart = Timer
     Call ExtractMatchingItems
+    stepElapsed = Timer - stepStart
+    Debug.Print "ExtractMatchingItems: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Listing occurrences in Labour Costing")
+    stepStart = Timer
     Call ListOccurrencesInLabourCosting
+    stepElapsed = Timer - stepStart
+    Debug.Print "ListOccurrencesInLabourCosting: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing Labour Data")
+    stepStart = Timer
     Call SummarizeLabourData
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummarizeLabourData: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing Labour Data2")
+    stepStart = Timer
     Call SummarizeLabourData2
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummarizeLabourData2: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying XLOOKUP Formula")
+    stepStart = Timer
     Call ApplyXLOOKUPFormula
+    stepElapsed = Timer - stepStart
+    Debug.Print "ApplyXLOOKUPFormula: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying XLOOKUP for Column F")
+    stepStart = Timer
     Call ApplyXLOOKUPForColumnF
+    stepElapsed = Timer - stepStart
+    Debug.Print "ApplyXLOOKUPForColumnF: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Running test")
+    stepStart = Timer
     Call test
+    stepElapsed = Timer - stepStart
+    Debug.Print "test: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Copying Data Worksheet")
+    stepStart = Timer
     Call CopyDataWorksheet
+    stepElapsed = Timer - stepStart
+    Debug.Print "CopyDataWorksheet: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying XLOOKUP Down Sheet AFE")
+    stepStart = Timer
     Call ApplyXLOOKUPDownSheet_AFE
+    stepElapsed = Timer - stepStart
+    Debug.Print "ApplyXLOOKUPDownSheet_AFE: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Finalizing Labour")
+    stepStart = Timer
     Call LabourFinal
+    stepElapsed = Timer - stepStart
+    Debug.Print "LabourFinal: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing Totals")
+    stepStart = Timer
     Call SummaryTotals
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummaryTotals: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing PMEX Totals")
+    stepStart = Timer
     Call SummaryPMEXTotals
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummaryPMEXTotals: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Cleaning Data")
+    stepStart = Timer
     Call DataClean
+    stepElapsed = Timer - stepStart
+    Debug.Print "DataClean: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Tallying Values Between Yellow Cells")
+    stepStart = Timer
     Call TallyValuesBetweenYellowCells
+    stepElapsed = Timer - stepStart
+    Debug.Print "TallyValuesBetweenYellowCells: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Assigning Vendors")
+    stepStart = Timer
     Call VendorAssignment
+    stepElapsed = Timer - stepStart
+    Debug.Print "VendorAssignment: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Breaking Links")
+    stepStart = Timer
     Call BreakLinks
+    stepElapsed = Timer - stepStart
+    Debug.Print "BreakLinks: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
+
+    Debug.Print "RunAllSteps Total: " & Format(Timer - runStart, "0.00") & "s"
 
     ' Final progress update
     Call UpdateProgress(currentStep, totalSteps, "Completed")
+    If PERF_MODE Then EndPerfMode
     ufProgress.Hide
     Exit Sub
 
 ErrorHandler:
+    If PERF_MODE Then EndPerfMode
     MsgBox "An error occurred: " & Err.Description
     ufProgress.Hide
+End Sub
+
+Private Sub BeginPerfMode()
+    If gPerfApplied Then Exit Sub
+
+    gPrevScreenUpdating = Application.ScreenUpdating
+    gPrevEnableEvents = Application.EnableEvents
+    gPrevCalculation = Application.Calculation
+
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.Calculation = xlCalculationManual
+
+    gPerfApplied = True
+End Sub
+
+Private Sub EndPerfMode()
+    If Not gPerfApplied Then Exit Sub
+
+    Application.ScreenUpdating = gPrevScreenUpdating
+    Application.EnableEvents = gPrevEnableEvents
+    Application.Calculation = gPrevCalculation
+
+    gPerfApplied = False
+    gPerfLock = False
+End Sub
+
+Public Sub SetScreenUpdatingSafely(ByVal isEnabled As Boolean)
+    If gPerfLock Then Exit Sub
+    Application.ScreenUpdating = isEnabled
+End Sub
+
+Public Sub SetEnableEventsSafely(ByVal isEnabled As Boolean)
+    If gPerfLock Then Exit Sub
+    Application.EnableEvents = isEnabled
+End Sub
+
+Public Sub SetCalculationSafely(ByVal calcMode As XlCalculation)
+    If gPerfLock Then Exit Sub
+    Application.Calculation = calcMode
 End Sub
 
 Sub UpdateProgress(currentStep As Integer, totalSteps As Integer, stepDescription As String)
@@ -180,7 +325,7 @@ Sub Createworkbook()
     Dim password As String
     password = "PlanExRavMB" ' Your actual password
 
-    application.ScreenUpdating = False
+    SetScreenUpdatingSafely False
 
     ' Set the current workbook (the workbook you're working in)
     Set currentWorkbook = ThisWorkbook
@@ -261,7 +406,7 @@ Sub Createworkbook()
     End With
     DoEvents
 
-    application.ScreenUpdating = True
+    SetScreenUpdatingSafely True
 End Sub
 
 
@@ -273,7 +418,7 @@ Sub ClearDataAndUpdate()
     Dim Data2 As Worksheet
     Dim LCData As Worksheet
     Dim wb As Workbook
-    application.ScreenUpdating = False
+    SetScreenUpdatingSafely False
     With ufProgress
         .LabelCaption.Caption = "Clearing Data - 0" & "% Complete"
         .LabelProgress.Width = 0 * (.FrameProgress.Width)
@@ -336,39 +481,67 @@ End Sub
 Sub Removeduplicates()
     Dim tbl As ListObject
     Dim ws As Worksheet
-    application.ScreenUpdating = False
+    Dim dataArr As Variant
+    Dim outArr() As Variant
+    Dim dict As Object
+    Dim i As Long, c As Long
+    Dim keepCount As Long
+    Dim key As String
+
+    SetScreenUpdatingSafely False
     With ufProgress
         .LabelCaption.Caption = "Removing Duplicates - 0" & "% Complete"
         .LabelProgress.Width = 0 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
+        .Repaint
     End With
     DoEvents
 
-    ' Set the sheet where the table is located
-    Set ws = ThisWorkbook.Sheets("Task_list_rep") ' Replace with your actual sheet name
+    Set ws = ThisWorkbook.Sheets("Task_list_rep")
     On Error Resume Next
-    Set tbl = ws.ListObjects("TASK_LIST_REP") ' Try to get the table by name
+    Set tbl = ws.ListObjects("TASK_LIST_REP")
     On Error GoTo 0
 
     With ufProgress
         .LabelCaption.Caption = "Removing Duplicates - 50" & "% Complete"
         .LabelProgress.Width = 0.5 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
+        .Repaint
     End With
     DoEvents
 
-    If Not tbl Is Nothing And tbl.ListColumns.Count >= 16 Then
-        ' Remove duplicates from columns 8 and 16
-        tbl.Range.Removeduplicates Columns:=Array(8, 16), Header:=xlYes
+    If tbl Is Nothing Then Exit Sub
+    If tbl.ListColumns.Count < 16 Then Exit Sub
+    If tbl.DataBodyRange Is Nothing Then Exit Sub
+
+    dataArr = tbl.DataBodyRange.Value2
+    ReDim outArr(1 To UBound(dataArr, 1), 1 To UBound(dataArr, 2))
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    keepCount = 0
+    For i = 1 To UBound(dataArr, 1)
+        key = CStr(dataArr(i, 8)) & ChrW(30) & CStr(dataArr(i, 16))
+        If Not dict.Exists(key) Then
+            dict.Add key, 1
+            keepCount = keepCount + 1
+            For c = 1 To UBound(dataArr, 2)
+                outArr(keepCount, c) = dataArr(i, c)
+            Next c
+        End If
+    Next i
+
+    tbl.DataBodyRange.ClearContents
+    If keepCount > 0 Then
+        tbl.Resize ws.Range(tbl.HeaderRowRange.Cells(1, 1), tbl.HeaderRowRange.Cells(1, 1).Offset(keepCount, tbl.ListColumns.Count - 1))
+        tbl.DataBodyRange.Value2 = outArr
+    Else
+        tbl.Resize ws.Range(tbl.HeaderRowRange.Cells(1, 1), tbl.HeaderRowRange.Cells(1, 1).Offset(0, tbl.ListColumns.Count - 1))
     End If
 
     With ufProgress
         .LabelCaption.Caption = "Removing Duplicates - 100" & "% Complete"
         .LabelProgress.Width = 1 * (.FrameProgress.Width)
-        .Repaint ' Force the form to refresh
+        .Repaint
     End With
     DoEvents
-
 End Sub
 
 
@@ -382,7 +555,7 @@ Sub Macro1()
     Dim afeBuilderWorkbook As Workbook
     Dim filteredRange As Range
 
-application.ScreenUpdating = False
+SetScreenUpdatingSafely False
     With ufProgress
         .LabelCaption.Caption = "Copying Data - 0" & "% Complete"
         .LabelProgress.Width = 0 * (.FrameProgress.Width)
@@ -508,7 +681,7 @@ End Sub
 Sub Text_to_Columns()
     Dim sheet As Worksheet
     Set sheet = ThisWorkbook.Sheets("Components Due") ' Reference the "Components Due" sheet for Column G
-    application.ScreenUpdating = False
+    SetScreenUpdatingSafely False
     
     With ufProgress
         .LabelCaption.Caption = "Converting Data - 0" & "% Complete"
@@ -570,9 +743,9 @@ Sub SearchAndReturnValues()
     Dim valueFromI13 As String ' Variable to hold value from AFE Builder - Front Sheet I13
 
     ' Disable updates to improve speed
-    application.ScreenUpdating = False
-    application.Calculation = xlCalculationManual
-    application.EnableEvents = False
+    SetScreenUpdatingSafely False
+    SetCalculationSafely xlCalculationManual
+    SetEnableEventsSafely False
 
     With ufProgress
         .LabelCaption.Caption = "Retrieving Values - 0" & "% Complete"
@@ -676,9 +849,9 @@ Sub SearchAndReturnValues()
     End With
     DoEvents
     ' Re-enable updates after completion
-    application.ScreenUpdating = True
-    application.Calculation = xlCalculationAutomatic
-    application.EnableEvents = True
+    SetScreenUpdatingSafely True
+    SetCalculationSafely xlCalculationAutomatic
+    SetEnableEventsSafely True
 
     ' Notify the user that data has been copied
    ' MsgBox "Data has been successfully copied to AFE workbook.", vbInformation
