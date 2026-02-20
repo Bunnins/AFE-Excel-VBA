@@ -2,6 +2,11 @@ Attribute VB_Name = "ComponentsDue"
 Public Sub RunAllSteps()
     On Error GoTo ErrorHandler
 
+    Dim runStart As Double
+    Dim stepStart As Double
+    Dim stepElapsed As Double
+    runStart = Timer
+
     Dim result As String
     result = MsgBox("Please ensure Data is Fully Loaded before Proceeding - Is all Data Loaded", vbYesNo)
     If result = vbNo Then Exit Sub
@@ -17,138 +22,221 @@ Public Sub RunAllSteps()
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Creating Workbook")
+    stepStart = Timer
     Call Createworkbook
+    stepElapsed = Timer - stepStart
+    Debug.Print "Createworkbook: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Clearing Data and Data2 sheets")
+    stepStart = Timer
     Call ClearDataAndUpdate
+    stepElapsed = Timer - stepStart
+    Debug.Print "ClearDataAndUpdate: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Removing duplicates from Labour Costing sheet")
+    stepStart = Timer
     Call Removeduplicates
+    stepElapsed = Timer - stepStart
+    Debug.Print "Removeduplicates: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying Text to Columns")
+    stepStart = Timer
     Call Text_to_Columns
+    stepElapsed = Timer - stepStart
+    Debug.Print "Text_to_Columns: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Executing Macro1")
+    stepStart = Timer
     Call Macro1
+    stepElapsed = Timer - stepStart
+    Debug.Print "Macro1: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Searching and returning values")
+    stepStart = Timer
     Call SearchAndReturnValues
+    stepElapsed = Timer - stepStart
+    Debug.Print "SearchAndReturnValues: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Running CounterReturn")
+    stepStart = Timer
     Call CounterReturn
+    stepElapsed = Timer - stepStart
+    Debug.Print "CounterReturn: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Running CounterReturn2")
+    stepStart = Timer
     Call CounterReturn2
+    stepElapsed = Timer - stepStart
+    Debug.Print "CounterReturn2: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Removing blank rows from Components Due sheet")
+    stepStart = Timer
     Call RemoveBlankRows(Workbooks("AFE Builder from SAP HANA").Sheets("Components Due"))
+    stepElapsed = Timer - stepStart
+    Debug.Print "RemoveBlankRows: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Sorting data in Components Due sheet")
+    stepStart = Timer
     Call Sort_Order
+    stepElapsed = Timer - stepStart
+    Debug.Print "Sort_Order: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Clearing specific columns from another sheet")
+    stepStart = Timer
     Call ClearTable1672ColI
+    stepElapsed = Timer - stepStart
+    Debug.Print "ClearTable1672ColI: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Extracting matching items")
+    stepStart = Timer
     Call ExtractMatchingItems
+    stepElapsed = Timer - stepStart
+    Debug.Print "ExtractMatchingItems: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Listing occurrences in Labour Costing")
+    stepStart = Timer
     Call ListOccurrencesInLabourCosting
+    stepElapsed = Timer - stepStart
+    Debug.Print "ListOccurrencesInLabourCosting: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing Labour Data")
+    stepStart = Timer
     Call SummarizeLabourData
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummarizeLabourData: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing Labour Data2")
+    stepStart = Timer
     Call SummarizeLabourData2
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummarizeLabourData2: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying XLOOKUP Formula")
+    stepStart = Timer
     Call ApplyXLOOKUPFormula
+    stepElapsed = Timer - stepStart
+    Debug.Print "ApplyXLOOKUPFormula: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying XLOOKUP for Column F")
+    stepStart = Timer
     Call ApplyXLOOKUPForColumnF
+    stepElapsed = Timer - stepStart
+    Debug.Print "ApplyXLOOKUPForColumnF: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Running test")
+    stepStart = Timer
     Call test
+    stepElapsed = Timer - stepStart
+    Debug.Print "test: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Copying Data Worksheet")
+    stepStart = Timer
     Call CopyDataWorksheet
+    stepElapsed = Timer - stepStart
+    Debug.Print "CopyDataWorksheet: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Applying XLOOKUP Down Sheet AFE")
+    stepStart = Timer
     Call ApplyXLOOKUPDownSheet_AFE
+    stepElapsed = Timer - stepStart
+    Debug.Print "ApplyXLOOKUPDownSheet_AFE: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Finalizing Labour")
+    stepStart = Timer
     Call LabourFinal
+    stepElapsed = Timer - stepStart
+    Debug.Print "LabourFinal: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing Totals")
+    stepStart = Timer
     Call SummaryTotals
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummaryTotals: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Summarizing PMEX Totals")
+    stepStart = Timer
     Call SummaryPMEXTotals
+    stepElapsed = Timer - stepStart
+    Debug.Print "SummaryPMEXTotals: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Cleaning Data")
+    stepStart = Timer
     Call DataClean
+    stepElapsed = Timer - stepStart
+    Debug.Print "DataClean: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Tallying Values Between Yellow Cells")
+    stepStart = Timer
     Call TallyValuesBetweenYellowCells
+    stepElapsed = Timer - stepStart
+    Debug.Print "TallyValuesBetweenYellowCells: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Assigning Vendors")
+    stepStart = Timer
     Call VendorAssignment
+    stepElapsed = Timer - stepStart
+    Debug.Print "VendorAssignment: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
 
     ' Update progress
     Call UpdateProgress(currentStep, totalSteps, "Breaking Links")
+    stepStart = Timer
     Call BreakLinks
+    stepElapsed = Timer - stepStart
+    Debug.Print "BreakLinks: " & Format(stepElapsed, "0.00") & "s"
     currentStep = currentStep + 1
+
+    Debug.Print "RunAllSteps Total: " & Format(Timer - runStart, "0.00") & "s"
 
     ' Final progress update
     Call UpdateProgress(currentStep, totalSteps, "Completed")
